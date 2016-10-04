@@ -176,6 +176,7 @@ class MCTS(object):
 
 # future part
 class ParallelMCTS(MCTS):
-    pass
+    def __init__(self):
+        pass
 
 
