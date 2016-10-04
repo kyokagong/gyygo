@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>contact</title>
+</head>
+<body>
+<div class="contact body">
+    <div class="contact_title">
+        <li>标题：{{ blog.classification }}</li>
+        <li>内容：
+            <a href=head><img src="/static/getter1.jpg" alt="LOGO" name="logo" width="180" height="180" id="logo"/></a>
+            {% for line in info %}
+                <li> {{ line.name }}</li>
+                <li> {{ line.hobby }}</li>
+                <li> {{ line.contact }}</li>
+            {% endfor %}
+        </li>
+      </ul>
+    </div>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,6 @@
+
+alphago分4个阶段
+1, 简单的 supervised learning。利用历史数据（sgf），训练一个基本policy。这个policy会根据现有的state选择一个move
+2, Reinforcement learning。 一个自我下棋的过程。自己是当前的policy， 对手是随机一个历史policy。每个batchsize里面的其中一个就代表一个下棋全程过。
+  如果一个128minibatch，就代表下过128盘其
+3, RL for value net。 稍后补充。

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+	<title>nixBoard</title>
+
+    {% load staticfiles %}
+    <link href="{% static "css/style.css" %}" rel="stylesheet">
+    <script type="text/javascript" src="{% static "js/go.js" %}"></script>
+    <script type="text/javascript" src="{% static "js/config.js" %}"></script>
+    <script type="text/javascript" src="{% static "js/play.js" %}"></script>
+</head>
+
+<script src="http://apps.bdimg.com/libs/jquery/1.11.1/jquery.min.js"></script>
+<script>
+{#    $(document).ready(function(){#}
+{#      $("#next").click(function(){#}
+{#        $.get("/nextMove/", function(ret){#}
+{#            var x_ = ret["row"]#}
+{#            var y_ = ret["col"]#}
+{#            play(x_, y_);#}
+{#	        showPan();#}
+{#        })#}
+{#      });#}
+{#    });#}
+</script>
+
+<body>
+	<button id="next" type="button">下一步</button><br/>
+	<canvas id="weiqi" width="600" height="600"></canvas>
+	<canvas id="path" width="600" height="600"></canvas>
+</body>
+</html>
