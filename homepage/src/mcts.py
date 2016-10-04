@@ -174,6 +174,7 @@ class MCTS(object):
             self.root = TreeNode(None, 1.0)
 
 
+# future part
 class ParallelMCTS(MCTS):
     pass
 
