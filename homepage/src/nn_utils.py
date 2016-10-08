@@ -13,6 +13,7 @@ IS_GPU = False
 
 INIT_VAL = 0.1
 
+"""the basic layer class"""
 class CommonLayer(object):
     def get_filter(self):
         return self.filter_shape
@@ -204,7 +205,14 @@ class FullForwardLayer(CommonLayer):
                                            {self.update_placeholder_biases:biases})
 
 
-
+"""a Convolution neural network model"""
+# IMAGE_SIZE
+# NUM_CHANNELS
+# NUM_LABELS
+# BATCH_SIZE=None
+# a parameters above are used for defining the image input node
+# in the first time, i want to make a model like keras, however,
+# i found it a lit of bit difficult. so, i just make a cnn model instead. in the near future, i would like to make a residual cnn
 class CNN(object):
     def __init__(self, IMAGE_SIZE, NUM_CHANNELS, NUM_LABELS, BATCH_SIZE=None):
         self.image_size = IMAGE_SIZE
@@ -399,7 +407,7 @@ class CNN(object):
     def init_vars(self):
         SessionHandler().initialize_variables()
 
-
+#
 def get_predict_by_batch(model, test_x, batch_size):
     iter = math.ceil(test_x.shape[0] / batch_size)
     pred_list = []
@@ -423,6 +431,7 @@ def error_rate(predictions, labels):
       np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1)) /
       predictions.shape[0])
 
+# get the policy model.   i would like to make it like keras, just need input json.  this function is totally handmake, it was so ugly
 def get_cnn_model():
     try:
         if not SessionHandler().is_session_init:
@@ -446,6 +455,7 @@ def get_cnn_model():
     cnn.init_vars()
     return cnn
 
+# like above
 def get_cnn_value_model(weight_dir=None):
     try:
         if not SessionHandler().is_session_init:
@@ -482,6 +492,7 @@ def get_cnn_value_model(weight_dir=None):
     cnn.init_vars()
     return cnn
 
+# for testing the class made by tensorflow
 if __name__ == '__main__':
     SessionHandler().set_default()
 
