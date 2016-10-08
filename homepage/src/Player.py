@@ -14,6 +14,7 @@ def flatten_idx(position, size):
     (x, y) = position
     return x * size + y
 
+# this code is revised by the one i mentioned in readme
 class BasePolicy:
     def _select_moves_and_normalize(self, nn_output, moves, size):
         """helper function to normalize a distribution over the given list of moves
@@ -227,7 +228,7 @@ FEATURES = {
     }
 }
 
-
+# this code is revised by the one i mentioned in readme
 class ProcessState:
     def __init__(self, features_list):
         self.output_dim = 0

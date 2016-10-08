@@ -8,6 +8,7 @@ class Singleton(object):
         return cls._instance
 
 
+"""a singleton for tensorflow session, so that i can use session anywhere by just one initialization"""
 class SessionHandler(Singleton):
     def set_default(self):
         self.is_session_init = 1
