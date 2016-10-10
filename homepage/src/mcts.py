@@ -1,5 +1,6 @@
 import numpy as np
-
+import asyncio
+import concurrent.futures
 
 class TreeNode(object):
     """Tree Representation of MCTS that covers Selection, Expansion, Evaluation, and backUp (aka 'update()')
@@ -174,10 +175,45 @@ class MCTS(object):
             self.root = TreeNode(None, 1.0)
 
 
-# future part
+# use asyncio to run asyn
 class ParallelMCTS(MCTS):
-    def __init__(self):
-        pass
+    def __init__(self, value_network, policy_network, rollout_policy, lmbda=0.5, c_puct=5, rollout_limit=500,
+                 playout_depth=20, n_search=10, n_executors=2):
+        self.root = TreeNode(None, 1.0)
+        self._value = value_network
+        self._policy = policy_network
+        self._rollout = rollout_policy
+        self._lmbda = lmbda
+        self._c_puct = c_puct
+        self._rollout_limit = rollout_limit
+        self._L = playout_depth
+        self._n_search = n_search
+        self.n_executors = n_executors
 
-    def get_move(self, state):
-        pass
+    async def _block_run_DFS(self, executor, state):
+        loop = asyncio.get_event_loop()
+        block_tasks = [loop.run_in_executor(executor, self._DFS, self._L, self.root, state.copy()) for i in range(self.n_executors)]
+        await asyncio.wait(block_tasks)
+
+    def parallel_get_move(self, state):
+        action_probs = self._policy(state)
+        self.root.expansion(action_probs)
+
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.n_executors)
+        loop = asyncio.get_event_loop()
+        for n in range(0, self._n_search):
+            # state_copy = state.copy()
+            loop.run_until_complete(self._block_run_DFS(executor, state))
+
+        # chosen action is the *most visited child*, not the highest-value
+        # (note that they are the same as self._n_search gets large)
+        return max(self.root.children.items(), key=lambda a_n: a_n[1].nVisits)[0]
+
+async def _block_run_DFS(self, executor, fun, *args):
+        loop = asyncio.get_event_loop()
+        block_tasks = [loop.run_in_executor(executor, fun, args) for i in range(2)]
+        await asyncio.wait(block_tasks)
+
+
+if __name__ == '__main__':
+    asyncio.iscoroutinefunction()
