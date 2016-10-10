@@ -1,10 +1,11 @@
 
 from homepage.src.nn_utils import get_cnn_value_model, get_cnn_model
 from homepage.src.Player import Player, Value
-from homepage.src.mcts import MCTS
+from homepage.src.mcts import MCTS, ParallelMCTS
 from homepage.src.go import GameState
 import h5py
 import time
+import asyncio
 
 if __name__ == '__main__':
 
@@ -19,9 +20,10 @@ if __name__ == '__main__':
 
     go_state = GameState()
 
-    mcts = MCTS(value.get_value, policy.policy.eval_state, policy.policy.eval_state)
+    mcts = ParallelMCTS(value.get_value, policy.policy.eval_state, policy.policy.eval_state, n_search=5, n_executors=2)
+
     start_time = time.time()
-    moves = mcts.get_move(go_state)
+    moves = mcts.parallel_get_move(go_state)
     end_time = time.time()
     print(end_time-start_time)
-    a = 1
+    print(moves)
