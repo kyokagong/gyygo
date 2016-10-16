@@ -205,15 +205,19 @@ class FullForwardLayer(CommonLayer):
                                            {self.update_placeholder_biases:biases})
 
 
-"""a Convolution neural network model"""
-# IMAGE_SIZE
-# NUM_CHANNELS
-# NUM_LABELS
-# BATCH_SIZE=None
-# a parameters above are used for defining the image input node
-# in the first time, i want to make a model like keras, however,
-# i found it a lit of bit difficult. so, i just make a cnn model instead. in the near future, i would like to make a residual cnn
+
 class CNN(object):
+    """a Convolution neural network model
+        Args:
+        # IMAGE_SIZE
+        # NUM_CHANNELS
+        # NUM_LABELS
+        # BATCH_SIZE=None
+        # a parameters above are used for defining the image input node
+        # in the first time, i want to make a model like keras, however,
+        # i found it a lit of bit difficult. so, i just make a cnn model instead.
+        # in the near future, i would like to make a residual cnn
+    """
     def __init__(self, IMAGE_SIZE, NUM_CHANNELS, NUM_LABELS, BATCH_SIZE=None):
         self.image_size = IMAGE_SIZE
         self.label_size = NUM_LABELS
@@ -306,11 +310,6 @@ class CNN(object):
 
     # in order to use GPU or CPU selectively
     def create_net(self, mode="Softmax"):
-            ## becuz i not really know tf, so the full multi network is determined
-            # next_input = self.layer_map[0].get_output(self.input_node)
-            # for i in range(1,self.num_layer):
-            #     next_input = self.layer_map[i].get_output(next_input)
-
             self.compile_net()
 
             last_layer_type = ""
@@ -374,32 +373,23 @@ class CNN(object):
 
 
     def save_weights(self, file_name):
-        f = h5py.File(file_name, 'w')
-        weight_num = 0
-        bias_num = 0
-        for i in range(0,self.num_layer):
-            if self.layer_map[i].layer_type != LAYER_TYPE[2] and self.layer_map[i].layer_type != LAYER_TYPE[3]:
-                weight =  self.layer_map[i].conv_weights.eval()
-                name = "weight_%s" % str(weight_num)
-                f.create_dataset(name, data=weight)
-                weight_num += 1
+        with h5py.File(file_name, 'w') as f:
+            weight_num = 0
+            bias_num = 0
+            for i in range(0,self.num_layer):
+                if self.layer_map[i].layer_type != LAYER_TYPE[2] and self.layer_map[i].layer_type != LAYER_TYPE[3]:
+                    weight =  self.layer_map[i].conv_weights.eval()
+                    name = "weight_%s" % str(weight_num)
+                    f.create_dataset(name, data=weight)
+                    weight_num += 1
 
-            elif self.layer_map[i].layer_type == LAYER_TYPE[3]:
-                weight = self.layer_map[i].fc_weights.eval()
-                bias = self.layer_map[i].fc_biases.eval()
-                f.create_dataset("weight_%s" % str(weight_num), data=weight)
-                f.create_dataset("bias_%s"%str(bias_num), data=bias)
-                weight_num += 1
-                bias_num += 1
-
-        # for i, tf_weight in enumerate(self.weight_list):
-        #     name = "weight_%s" % str(i)
-        #     weight = tf_weight.eval()
-        #
-        # for i, tf_bias in enumerate(self.bias_list):
-        #     bias = tf_bias.eval()
-        #     f.create_dataset("bias_%s"%str(i), data=bias)
-        f.close()
+                elif self.layer_map[i].layer_type == LAYER_TYPE[3]:
+                    weight = self.layer_map[i].fc_weights.eval()
+                    bias = self.layer_map[i].fc_biases.eval()
+                    f.create_dataset("weight_%s" % str(weight_num), data=weight)
+                    f.create_dataset("bias_%s"%str(bias_num), data=bias)
+                    weight_num += 1
+                    bias_num += 1
 
     def release(self):
         self.session.close()
@@ -431,8 +421,14 @@ def error_rate(predictions, labels):
       np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1)) /
       predictions.shape[0])
 
-# get the policy model.   i would like to make it like keras, just need input json.  this function is totally handmake, it was so ugly
+
 def get_cnn_model():
+    """
+    get the policy model.   i would like to make it like keras, just need input json.
+        this function is totally handmake, it was so ugly
+    Returns:
+
+    """
     try:
         if not SessionHandler().is_session_init:
             SessionHandler().set_default()
@@ -555,14 +551,3 @@ if __name__ == '__main__':
             er = error_rate(pred, test_Y)
             print("test error: %s" % str(er))
 
-
-    # dset.close()
-    # cnn.save_weights("../weights/test_w.hdf5")
-    #
-    a = 1
-    # class test:
-    #     def __init__(self):
-    #         pass
-    #
-    # a = {}
-    # a[1] = test()

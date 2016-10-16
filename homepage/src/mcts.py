@@ -175,8 +175,17 @@ class MCTS(object):
             self.root = TreeNode(None, 1.0)
 
 
-# use asyncio to run asyn
 class ParallelMCTS(MCTS):
+    """
+        use asyncio to parallise the mcts
+        Args:
+            value_network: this is mean a function that can return predicted value
+            policy_network:  this is mean a function that can return moves_probabilities tuple
+            rollout_policy: this is mean a function that can return moves_probabilities tuple,
+                          however this policy is faster than policy network. in the paper, it
+                          just use one feature, instead of a lot of features used in policy network
+
+    """
     def __init__(self, value_network, policy_network, rollout_policy, lmbda=0.5, c_puct=5, rollout_limit=500,
                  playout_depth=20, n_search=10, n_executors=2):
         self.root = TreeNode(None, 1.0)

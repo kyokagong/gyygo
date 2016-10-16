@@ -150,6 +150,13 @@ class ProbabilisticPolicyPlayer(BasePolicy):
 
 
 class Player:
+    """
+        A ProbabilisticPolicyPlayer wrapper.
+        Args:
+            player_color: WHITE or BLACK, the default is BLACK
+            feature_list: A list contains what features should be computed for the
+                     input node
+    """
     def __init__(self, player_color=None, feature_list=["board"]):
         self.model = get_cnn_model()
 
@@ -174,6 +181,14 @@ class Player:
 
 
 class Value:
+    """
+        A Value network wrapper
+        Defautlt model is set arbitrarily, this is not so good, and need for
+        improve
+        Args:
+            player_color: WHITE or BLACK, the default is BLACK
+
+    """
     def __init__(self, player_color=None, feature_list=["board"]):
         self.model = get_cnn_value_model()
 
@@ -184,6 +199,15 @@ class Value:
         return self.model.get_predict(nn_input)
 
 class MCTS_Player:
+    """
+        Monte Carlo tree search policy wrapper
+        Args:
+            policy_weigths_dir: a directory of weights for policy network
+            value_weights_dir: a directory of weights for value network
+            player_color: WHITE or BLACK, the default is BLACK
+            feature_list: A list contains what features should be computed for the
+                     input node
+    """
     def __init__(self, policy_weigths_dir, value_weights_dir, player_color=None, feature_list=["board"]
                  ):
         self.model = get_cnn_model()
@@ -199,8 +223,6 @@ class MCTS_Player:
 
         self.value = Value()
         self.value.model.load_weights(weights_set4v)
-
-
 
     def get_move(self, state, lmbda=0.5, c_puct=5, rollout_limit=500, playout_depth=20, n_search=10):
         policy = MCTS(self.value.get_value, self.policy.policy.eval_state, self.policy.policy.eval_state,
