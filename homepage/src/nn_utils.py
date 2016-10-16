@@ -205,6 +205,12 @@ class FullForwardLayer(CommonLayer):
                                            {self.update_placeholder_biases:biases})
 
 
+class ShortcutLayer():
+    """
+        Shortcut connection layer.
+    """
+    def __init__(self):
+        pass
 
 class CNN(object):
     """a Convolution neural network model
