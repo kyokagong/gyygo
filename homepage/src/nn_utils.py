@@ -209,8 +209,37 @@ class ShortcutLayer():
     """
         Shortcut connection layer.
     """
-    def __init__(self):
+    def __init__(self, weights=None):
+        self.con_layers_map = {}
+        self.layer_num = 0
+        self.init_weights = weights
+
+    def add(self, conv_layer):
+        self.con_layers_map[self.layer_num] = conv_layer
+        self.layer_num += 1
+
+    def _init_net(self):
         pass
+
+    def get_output(self, input):
+        output = input
+        for i in range(self.layer_num):
+            if i < (self.layer_num-1):
+                output = tf.nn.relu(self.con_layers_map[i].get_output(output))
+            else:
+                self.filter_shape = [3,3,input.get_shape()[3],self.con_layers_map[i].get_filter()[3]]
+                self.init_weights = tf.random_uniform(self.filter_shape,
+                              minval = -INIT_VAL,
+                              maxval = INIT_VAL
+                            )
+                self.conv_weights = self.conv_weights = tf.Variable(self.init_weights)
+                conv = tf.nn.conv2d(input=input,
+                                    filter=self.filter_shape,
+                                    strides=[1, 1, 1, 1],
+                                    padding=self.padding)
+                output = self.con_layers_map[i].get_output(output) + input
+
+
 
 class CNN(object):
     """a Convolution neural network model
@@ -264,12 +293,6 @@ class CNN(object):
         self.layer_map[self.num_layer] = layer
         # self.compute_last_layer_size(layer)
         self.num_layer += 1
-
-        # if layer.layer_type == LAYER_TYPE[1] or layer.layer_type == LAYER_TYPE[0]:
-        #     self.weight_list.append(layer.conv_weights)
-        # elif layer.layer_type == LAYER_TYPE[3]:
-        #     self.weight_list.append(layer.fc_weights)
-        #     self.bias_list.append(layer.fc_biases)
 
 
     ## actually init session
