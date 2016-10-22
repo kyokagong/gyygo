@@ -7,7 +7,7 @@ from homepage.src.tf_utils import SessionHandler
 VALID_METHOD = "VALID"
 SAME_METHOD = "SAME"
 
-LAYER_TYPE = ["convpool", "conv", "pool", "fc"]
+LAYER_TYPE = ["convpool", "conv", "pool", "fc", "shortcut"]
 
 IS_GPU = False
 
@@ -88,6 +88,14 @@ class ConvLayer(CommonLayer):
             self.update_weights_op = self.conv_weights.assign(self.update_placeholder_weights)
         SessionHandler().get_session().run(self.update_weights_op,
                                            {self.update_placeholder_weights:weights})
+
+    def save_weights(self, h5File, init_num):
+        weight_num = init_num
+        name = "weight_%s" % str(weight_num)
+        h5File.create_dataset(name, data=self.conv_weights.eval())
+        weight_num += 1
+        return weight_num
+
 
 
 class PoolLayer(CommonLayer):
@@ -196,6 +204,7 @@ class FullForwardLayer(CommonLayer):
             self.update_fc_weights_op = self.fc_weights.assign(self.update_placeholder_weights)
         SessionHandler().get_session().run(self.update_fc_weights_op,
                                            {self.update_placeholder_weights:weights})
+
     def set_placeholder_biases(self, biases):
         if self.update_fc_biases_op is None:
             self.update_placeholder_biases = tf.placeholder(self.init_fc_biases.dtype,
@@ -205,40 +214,90 @@ class FullForwardLayer(CommonLayer):
                                            {self.update_placeholder_biases:biases})
 
 
-class ShortcutLayer():
+class ShortcutLayer(CommonLayer):
     """
         Shortcut connection layer.
     """
-    def __init__(self, weights=None):
+    def __init__(self, weights=None, padding="SAME"):
+        self.layer_type = "shortcut"
         self.con_layers_map = {}
         self.layer_num = 0
         self.init_weights = weights
+        self.padding = padding
+
+        self.update_weights_op = None
 
     def add(self, conv_layer):
         self.con_layers_map[self.layer_num] = conv_layer
         self.layer_num += 1
 
     def _init_net(self):
-        pass
+        self.filter_shape = [3,3,self.con_layers_map[0].get_filter()[2],self.con_layers_map[self.layer_num-1].get_filter()[3]]
 
-    def get_output(self, input):
-        output = input
-        for i in range(self.layer_num):
-            if i < (self.layer_num-1):
-                output = tf.nn.relu(self.con_layers_map[i].get_output(output))
-            else:
-                self.filter_shape = [3,3,input.get_shape()[3],self.con_layers_map[i].get_filter()[3]]
-                self.init_weights = tf.random_uniform(self.filter_shape,
+        if self.init_weights is None:
+            self.init_weights = tf.random_uniform(self.filter_shape,
                               minval = -INIT_VAL,
                               maxval = INIT_VAL
                             )
+
+            for i in range(self.layer_num):
+                self.con_layers_map[i].init_net()
+
+    def get_output(self, input):
+        output = input
+
+        if input.get_shape()[3] == self.con_layers_map[self.layer_num-1].get_filter()[3]:
+            self.is_need_weights = False
+        else:
+            self.is_need_weights = True
+
+        for i in range(self.layer_num):
+            if i < (self.layer_num-1):
+                output = tf.nn.relu(self.con_layers_map[i].get_output(output))
+            elif self.is_need_weights and i == (self.layer_num-1):
                 self.conv_weights = self.conv_weights = tf.Variable(self.init_weights)
                 conv = tf.nn.conv2d(input=input,
-                                    filter=self.filter_shape,
+                                    filter=self.conv_weights,
                                     strides=[1, 1, 1, 1],
                                     padding=self.padding)
+
+                output = self.con_layers_map[i].get_output(output) + conv
+
+            elif not self.is_need_weights and i == (self.layer_num-1):
                 output = self.con_layers_map[i].get_output(output) + input
 
+        return output
+
+    def set_placeholder_weights(self, weights):
+        if self.update_weights_op is None:
+            self.update_placeholder_weights = tf.placeholder(self.init_weights.dtype,
+                                                             shape=self.conv_weights.get_shape())
+            self.update_weights_op = self.conv_weights.assign(self.update_placeholder_weights)
+        SessionHandler().get_session().run(self.update_weights_op,
+                                           {self.update_placeholder_weights:weights})
+
+
+    def save_weights(self, h5File, init_num):
+        weight_num = init_num
+        for i in range(self.layer_num):
+            self.con_layers_map[i].save_weights(h5File, weight_num)
+            weight_num += 1
+        if self.is_need_weights:
+            weight =  self.conv_weights.eval()
+            name = "weight_%s" % str(weight_num)
+            h5File.create_dataset(name, data=weight)
+            weight_num += 1
+        return weight_num
+
+    def set_conv_placeholder_weights(self, h5File, init_num):
+        weight_num = init_num
+        for i in range(self.layer_num):
+            self.con_layers_map[i].set_init_values(h5File['weight_%s'%(weight_num)][:])
+            weight_num += 1
+        if self.is_need_weights:
+            self.set_placeholder_weights(h5File['weight_%s'%(weight_num)][:])
+            weight_num += 1
+        return weight_num
 
 
 class CNN(object):
@@ -320,7 +379,7 @@ class CNN(object):
         weight_num = 0
         bias_num = 0
         for i in range(0,self.num_layer):
-            if self.layer_map[i].layer_type != LAYER_TYPE[2] and self.layer_map[i].layer_type != LAYER_TYPE[3]:
+            if self.layer_map[i].layer_type == LAYER_TYPE[0] and self.layer_map[i].layer_type == LAYER_TYPE[1]:
                 self.layer_map[i].set_placeholder_weights(hdf5_dset['weight_%s'%(weight_num)][:])
                 weight_num += 1
             elif self.layer_map[i].layer_type == LAYER_TYPE[3]:
@@ -328,6 +387,30 @@ class CNN(object):
                 self.layer_map[i].set_placeholder_biases(hdf5_dset['bias_%s'%(bias_num)][:])
                 weight_num += 1
                 bias_num += 1
+            elif self.layer_map[i].layer_type == LAYER_TYPE[4]:
+                weight_num = self.layer_map[i].set_conv_placeholder_weights(hdf5_dset, weight_num)
+
+    def save_weights(self, file_name):
+        with h5py.File(file_name, 'w') as f:
+            weight_num = 0
+            bias_num = 0
+            for i in range(0,self.num_layer):
+                if self.layer_map[i].layer_type == LAYER_TYPE[0] and self.layer_map[i].layer_type == LAYER_TYPE[1]:
+                    # weight =  self.layer_map[i].conv_weights.eval()
+                    # name = "weight_%s" % str(weight_num)
+                    # f.create_dataset(name, data=weight)
+                    weight_num = self.layer_map[i].save_weights(f, weight_num)
+
+                elif self.layer_map[i].layer_type == LAYER_TYPE[3]:
+                    weight = self.layer_map[i].fc_weights.eval()
+                    bias = self.layer_map[i].fc_biases.eval()
+                    f.create_dataset("weight_%s" % str(weight_num), data=weight)
+                    f.create_dataset("bias_%s"%str(bias_num), data=bias)
+                    weight_num += 1
+                    bias_num += 1
+
+                elif self.layer_map[i].layer_type == LAYER_TYPE[4]:
+                    weight_num = self.layer_map[i].save_weights(f, weight_num)
 
     def set_learning_rate(self, lr):
         self.lr_value = lr
@@ -401,24 +484,6 @@ class CNN(object):
                               feed_dict = {self.input_node:input})
 
 
-    def save_weights(self, file_name):
-        with h5py.File(file_name, 'w') as f:
-            weight_num = 0
-            bias_num = 0
-            for i in range(0,self.num_layer):
-                if self.layer_map[i].layer_type != LAYER_TYPE[2] and self.layer_map[i].layer_type != LAYER_TYPE[3]:
-                    weight =  self.layer_map[i].conv_weights.eval()
-                    name = "weight_%s" % str(weight_num)
-                    f.create_dataset(name, data=weight)
-                    weight_num += 1
-
-                elif self.layer_map[i].layer_type == LAYER_TYPE[3]:
-                    weight = self.layer_map[i].fc_weights.eval()
-                    bias = self.layer_map[i].fc_biases.eval()
-                    f.create_dataset("weight_%s" % str(weight_num), data=weight)
-                    f.create_dataset("bias_%s"%str(bias_num), data=bias)
-                    weight_num += 1
-                    bias_num += 1
 
     def release(self):
         self.session.close()
@@ -518,18 +583,21 @@ def get_cnn_value_model(weight_dir=None):
     return cnn
 
 # for testing the class made by tensorflow
-if __name__ == '__main__':
-    SessionHandler().set_default()
 
+def test_data():
     digit = np.loadtxt("../static/digitInputOutput.txt",dtype=np.float32)
     np.random.shuffle(digit)
-
     train_size = 4000
-    X = digit[:train_size,0:400].reshape((train_size,20,20,1))
-    Y = digit[:train_size,400:]
+    train_X = digit[:train_size,0:400].reshape((train_size,20,20,1))
+    train_Y = digit[:train_size,400:]
 
     test_X = digit[train_size:,0:400].reshape((5000-train_size,20,20,1))
     test_Y = digit[train_size:,400:]
+    return (train_X, train_Y, test_X, test_Y)
+
+def test_cnn():
+
+    X, Y, test_X, test_Y = test_data()
 
     NUM_CHANNELS = 1
     BATCH_SIZE = 200
@@ -579,4 +647,62 @@ if __name__ == '__main__':
             pred = get_predict_by_batch(cnn, test_X, BATCH_SIZE)
             er = error_rate(pred, test_Y)
             print("test error: %s" % str(er))
+
+
+def test_resnet():
+    NUM_CHANNELS = 1
+    BATCH_SIZE = 200
+
+    X, Y, test_X, test_Y = test_data()
+    resnet = CNN(20,NUM_CHANNELS,10)
+    next_cores_size = 8
+
+
+    shortcut1 = ShortcutLayer()
+    shortcut1.add(ConvLayer(filter_shape=[3,3,8,16]))
+    shortcut1.add(ConvLayer(filter_shape=[3,3,16,16]))
+    shortcut2 = ShortcutLayer()
+    shortcut2.add(ConvLayer(filter_shape=[3,3,16,16]))
+    shortcut2.add(ConvLayer(filter_shape=[3,3,16,16]))
+
+    shortcut3 = ShortcutLayer()
+    shortcut3.add(ConvLayer(filter_shape=[3,3,16,32]))
+    shortcut3.add(ConvLayer(filter_shape=[3,3,32,32]))
+    shortcut4 = ShortcutLayer()
+    shortcut4.add(ConvLayer(filter_shape=[3,3,32,32]))
+    shortcut4.add(ConvLayer(filter_shape=[3,3,32,32]))
+
+    resnet.add(ConvLayer(filter_shape=[3,3,NUM_CHANNELS,8]))
+    resnet.add(PoolLayer())
+    resnet.add(shortcut1)
+    resnet.add(shortcut2)
+    resnet.add(shortcut3)
+    resnet.add(shortcut4)
+    resnet.add(PoolLayer())
+    resnet.add(FullForwardLayer(32*5*5,512))
+    resnet.add(FullForwardLayer(512,10))
+    resnet.make_net()
+    resnet.init_vars()
+
+    dset = h5py.File("/home/kyoka/python_ws/gyygo/homepage/weights/test_resnet_w.hdf5",'r')
+    resnet.load_weights(dset)
+
+    for epoch in range(10):
+        print("epoch %d" % epoch)
+        for i in range(20):
+            tmpX = X[i*200:(i+1)*200,:,:,:].reshape((200,20,20,1))
+            tmpY = Y[i*200:(i+1)*200,:]
+
+            resnet.fit(tmpX,tmpY,1,BATCH_SIZE, decay_size=20)
+        pred = get_predict_by_batch(resnet, test_X, BATCH_SIZE)
+        er = error_rate(pred, test_Y)
+        print("test error: %s" % str(er))
+
+    dset.close()
+    resnet.save_weights("/home/kyoka/python_ws/gyygo/homepage/weights/test_resnet_w.hdf5")
+
+if __name__ == '__main__':
+    SessionHandler().set_default()
+
+    test_resnet()
 
